@@ -4,7 +4,8 @@ import type { Market } from './types'
 import MarketViewer from './components/MarketViewer'
 import AdminDashboard from './components/AdminDashboard'
 import MarketCreator from './components/MarketCreator'
-import { Activity, Wallet, Layout, Settings, Plus } from 'lucide-react'
+import CreatorView from './components/CreatorView'
+import { Activity, Wallet, Layout, Settings, Plus, Camera } from 'lucide-react'
 import './App.css'
 
 function App() {
@@ -12,7 +13,7 @@ function App() {
   const [selectedMarket, setSelectedMarket] = useState<Market | null>(null)
   const [balance, setBalance] = useState<number>(0)
   const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [view, setView] = useState<'viewer' | 'admin' | 'creator'>('viewer')
   const [showCreator, setShowCreator] = useState(false)
 
   const fetchMarkets = async () => {
@@ -54,13 +55,18 @@ function App() {
         </div>
         <div className="user-nav">
           <button 
-            className={`btn-secondary ${isAdmin ? 'active' : ''}`}
-            onClick={() => setIsAdmin(!isAdmin)}
+            className={`btn-secondary ${view === 'creator' ? 'active' : ''}`}
+            onClick={() => setView('creator')}
           >
-            <Settings size={16} />
-            {isAdmin ? 'Exit Admin' : 'Admin'}
+            <Camera size={16} /> Studio
           </button>
-          <div className="balance-badge">
+          <button 
+            className={`btn-secondary ${view === 'admin' ? 'active' : ''}`}
+            onClick={() => setView('admin')}
+          >
+            <Settings size={16} /> Admin
+          </button>
+          <div className="balance-badge" onClick={() => setView('viewer')}>
             <Wallet size={16} />
             <span>{balance.toFixed(2)} Play</span>
           </div>
@@ -69,7 +75,7 @@ function App() {
       </header>
 
       <main className="app-main">
-        {!isAdmin ? (
+        {view === 'viewer' && (
           <>
             <aside className="sidebar">
               <div className="sidebar-header">
@@ -116,9 +122,11 @@ function App() {
               )}
             </section>
           </>
-        ) : (
-          <AdminDashboard markets={markets} />
         )}
+
+        {view === 'admin' && <AdminDashboard markets={markets} />}
+        
+        {view === 'creator' && <CreatorView />}
       </main>
     </div>
   )

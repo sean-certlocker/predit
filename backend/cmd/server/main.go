@@ -46,15 +46,16 @@ func main() {
 		users:         make(map[string]*models.User),
 	}
 
-	// Seed data (ensure users and wallets exist for MVP)
-	// Note: In real app, we'd use migrations.
 	setupDB(db)
 
 	s.users["user1"] = &models.User{ID: "user1", Username: "alice", Role: "viewer", TrustScore: 85}
+	s.users["system"] = &models.User{ID: "system", Username: "platform_seed", Role: "admin"}
+	
 	s.ledgerService.Deposit("user1", 1000)
+	s.ledgerService.Deposit("system", 0)
 
 	s.marketService.CreateMarket(&models.Market{
-		ID:                 "00000000-0000-0000-0000-000000000123", // UUID format
+		ID:                 "00000000-0000-0000-0000-000000000123",
 		Title:              "Will 20 or more cars cross the line in the next 60 seconds?",
 		Status:             models.StatusOpen,
 		EventWindowSeconds: 60,
@@ -62,7 +63,6 @@ func main() {
 		Rules:              `{"targetCount": 20}`,
 	})
 
-	// Routes
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.handleHealth)
 	mux.HandleFunc("/api/ledger/balance", s.handleBalance)
@@ -93,8 +93,6 @@ func main() {
 }
 
 func setupDB(db *sql.DB) {
-	// Minimal table creation if not exists for MVP
-	// Real schema is in docs/B_Database_Schema.sql
 	db.Exec(`CREATE TABLE IF NOT EXISTS wallets (user_id TEXT PRIMARY KEY, balance DECIMAL(18,2) DEFAULT 0)`)
 	db.Exec(`CREATE TABLE IF NOT EXISTS ledger_entries (id SERIAL PRIMARY KEY, user_id TEXT, amount DECIMAL(18,2), type TEXT, reference_id TEXT, created_at TIMESTAMP)`)
 	db.Exec(`CREATE TABLE IF NOT EXISTS markets (id TEXT PRIMARY KEY, title TEXT, status TEXT, event_window_seconds INT, resolution_method TEXT, rules TEXT)`)
@@ -158,7 +156,8 @@ func (s *Server) handleBalance(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLedgerAudit(w http.ResponseWriter, r *http.Request) {
-	audit := map[string]interface{}{"total_system_balance": 1000.0}
+	balance := s.ledgerService.GetBalance("system")
+	audit := map[string]interface{}{"total_system_balance": balance}
 	json.NewEncoder(w).Encode(audit)
 }
 
@@ -179,7 +178,29 @@ func (s *Server) handleAIResolution(w http.ResponseWriter, r *http.Request) {
 		Flags      []string `json:"flags"`
 	}
 	json.NewDecoder(r.Body).Decode(&req)
+
+	market, ok := s.marketService.GetMarket(req.MarketID)
+	if !ok {
+		http.Error(w, "Market not found", http.StatusNotFound)
+		return
+	}
+
+	// Phase 4 Anti-Manipulation: Check for camera movement
+	for _, flag := range req.Flags {
+		if flag == "CAMERA_MOVEMENT_DETECTED" {
+			s.marketService.TransitionStatus(req.MarketID, models.StatusVoid)
+			json.NewEncoder(w).Encode(map[string]string{"status": "voided", "reason": "camera manipulation detected"})
+			return
+		}
+	}
+
+	// Resolution Logic
 	s.marketService.TransitionStatus(req.MarketID, models.StatusResolved)
+	
+	// Deduct Platform Fee (5.0 Play money) and move to system wallet
+	s.ledgerService.AddEntry("user1", -5.0, "fee", req.MarketID)
+	s.ledgerService.AddEntry("system", 5.0, "platform_fee", req.MarketID)
+
 	json.NewEncoder(w).Encode(map[string]string{"status": "resolved"})
 }
 
