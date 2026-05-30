@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -46,10 +47,25 @@ func main() {
 	http.HandleFunc("/api/ledger/balance", s.handleBalance)
 	http.HandleFunc("/api/markets", s.handleListMarkets)
 	http.HandleFunc("/api/streaming/token", s.handleGetStreamToken)
+	http.HandleFunc("/api/admin/trigger-resolution", s.handleTriggerResolution)
 	http.HandleFunc("/internal/ai/resolution", s.handleAIResolution)
 
 	fmt.Println("Predi Go Backend starting on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func (s *Server) handleTriggerResolution(w http.ResponseWriter, r *http.Request) {
+	marketID := r.URL.Query().Get("market_id")
+	market, ok := s.marketService.GetMarket(marketID)
+	if !ok {
+		http.Error(w, "Market not found", http.StatusNotFound)
+		return
+	}
+
+	s.marketService.TransitionStatus(marketID, models.StatusResolutionPending)
+	s.triggerAIResolution(marketID, "http://mock-stream/hls/123.m3u8", market.EventWindowSeconds)
+	
+	json.NewEncoder(w).Encode(map[string]string{"status": "resolution_triggered", "market_id": marketID})
 }
 
 func (s *Server) handleGetStreamToken(w http.ResponseWriter, r *http.Request) {
@@ -122,4 +138,18 @@ func (s *Server) handleAIResolution(w http.ResponseWriter, r *http.Request) {
 	// Simplified result logic
 	s.marketService.TransitionStatus(req.MarketID, models.StatusResolved)
 	json.NewEncoder(w).Encode(map[string]string{"status": "resolved", "market_id": req.MarketID})
+}
+
+func (s *Server) triggerAIResolution(marketID string, streamURL string, window int) {
+	payload := map[string]interface{}{
+		"market_id":      marketID,
+		"stream_url":     streamURL,
+		"window_seconds": window,
+	}
+	body, _ := json.Marshal(payload)
+	
+	// Fire and forget or handle error
+	go func() {
+		http.Post("http://localhost:8000/tasks", "application/json", bytes.NewBuffer(body))
+	}()
 }
