@@ -1,53 +1,73 @@
 package ledger
 
 import (
+	"database/sql"
 	"errors"
 	"predi-backend/pkg/models"
-	"sync"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 type Service struct {
-	mu      sync.RWMutex
-	entries []models.LedgerEntry
-	wallets map[string]float64
+	db *sql.DB
 }
 
-func NewService() *Service {
+func NewService(db *sql.DB) *Service {
 	return &Service{
-		entries: make([]models.LedgerEntry, 0),
-		wallets: make(map[string]float64),
+		db: db,
 	}
 }
 
 func (s *Service) GetBalance(userID string) float64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.wallets[userID]
+	var balance float64
+	err := s.db.QueryRow("SELECT balance FROM wallets WHERE user_id = $1", userID).Scan(&balance)
+	if err != nil {
+		return 0
+	}
+	return balance
 }
 
 func (s *Service) AddEntry(userID string, amount float64, entryType string, refID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 
-	// Check for sufficient balance if it's a stake
-	if amount < 0 && s.wallets[userID]+amount < 0 {
-		return errors.New("insufficient balance")
+	// Update or create wallet
+	var currentBalance float64
+	err = tx.QueryRow("SELECT balance FROM wallets WHERE user_id = $1 FOR UPDATE", userID).Scan(&currentBalance)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Create wallet if it doesn't exist (for MVP convenience)
+			if amount < 0 {
+				return errors.New("insufficient balance")
+			}
+			_, err = tx.Exec("INSERT INTO wallets (user_id, balance) VALUES ($1, $2)", userID, amount)
+		} else {
+			return err
+		}
+	} else {
+		if currentBalance+amount < 0 {
+			return errors.New("insufficient balance")
+		}
+		_, err = tx.Exec("UPDATE wallets SET balance = balance + $1 WHERE user_id = $2", amount, userID)
 	}
 
-	entry := models.LedgerEntry{
-		ID:          "L-" + time.Now().Format("20060102150405"),
-		UserID:      userID,
-		Amount:      amount,
-		Type:        entryType,
-		ReferenceID: refID,
-		CreatedAt:   time.Now(),
+	if err != nil {
+		return err
 	}
 
-	s.entries = append(s.entries, entry)
-	s.wallets[userID] += amount
+	// Add ledger entry
+	_, err = tx.Exec("INSERT INTO ledger_entries (user_id, amount, type, reference_id, created_at) VALUES ($1, $2, $3, $4, $5)",
+		userID, amount, entryType, nil, time.Now()) // refID skipped for simple MVP UUID compatibility
 
-	return nil
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (s *Service) Deposit(userID string, amount float64) error {
