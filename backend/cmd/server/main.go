@@ -135,6 +135,14 @@ func (s *Server) handleAIResolution(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for _, flag := range req.Flags {
+		if flag == "NSFW" || flag == "VIOLENCE" {
+			s.marketService.TransitionStatus(req.MarketID, models.StatusVoid)
+			json.NewEncoder(w).Encode(map[string]string{"status": "voided", "reason": "safety violation: " + flag})
+			return
+		}
+	}
+
 	// Simplified result logic
 	s.marketService.TransitionStatus(req.MarketID, models.StatusResolved)
 	json.NewEncoder(w).Encode(map[string]string{"status": "resolved", "market_id": req.MarketID})
