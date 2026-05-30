@@ -23,6 +23,7 @@ type User struct {
 	Username   string    `json:"username"`
 	Role       string    `json:"role"`
 	TrustScore int       `json:"trust_score"`
+	Suspicious bool      `json:"suspicious"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -35,7 +36,9 @@ type Market struct {
 	ResolutionMethod             string       `json:"resolution_method"`
 	MaxStake                     float64      `json:"max_stake"`
 	MaxPool                      float64      `json:"max_pool"`
-	Rules                        string       `json:"rules"` // JSON string for simplicity in MVP
+	Rules                        string       `json:"rules"`
+	Health                       string       `json:"health"` // Green, Yellow, Red
+	SafetyFlags                  []string     `json:"safety_flags"`
 }
 
 type LedgerEntry struct {

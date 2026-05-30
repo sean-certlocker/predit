@@ -101,8 +101,84 @@ body {
   padding: 1.25rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   border-bottom: 1px solid var(--border);
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover, .btn-icon.active {
+  color: var(--primary);
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+.market-creator {
+  background-color: rgba(255, 255, 255, 0.03);
+  padding: 1rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+  border: 1px dashed var(--border);
+}
+
+.market-creator h3 {
+  font-size: 0.875rem;
+  margin: 0 0 1rem 0;
+  color: var(--text-main);
+}
+
+.creator-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.creator-form label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.creator-form input {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  color: white;
+  font-size: 0.875rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-create {
+  width: 100%;
+  padding: 0.6rem;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 0.4rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
 }
 
 .sidebar-header h2 {
@@ -308,64 +384,192 @@ body {
   border-color: var(--text-muted);
 }
 
-.admin-panel {
+.admin-dashboard {
   flex: 1;
-  padding: 3rem;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.admin-header {
-  margin-bottom: 2rem;
-}
-
-.admin-header h2 {
-  font-size: 2rem;
-  margin: 0 0 0.5rem 0;
-}
-
-.admin-header p {
-  color: var(--text-muted);
-  margin: 0;
-}
-
-.admin-table-container {
+.admin-nav {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 2rem;
   background-color: var(--bg-card);
-  border-radius: 1rem;
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-
-.admin-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-}
-
-.admin-table th {
-  background-color: rgba(0,0,0,0.2);
-  padding: 1rem 1.5rem;
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.admin-table td {
-  padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--border);
 }
 
-.btn-admin-action {
+.admin-nav button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.admin-nav button.active {
+  background-color: rgba(99, 102, 241, 0.1);
+  color: var(--primary);
+}
+
+.admin-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.streams-matrix .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.stream-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.stream-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.health-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.health-indicator.green { background-color: var(--success); }
+.health-indicator.yellow { background-color: var(--warning); }
+.health-indicator.red { background-color: var(--danger); }
+
+.stream-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.stat .label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.stat .value {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.safety-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.btn-resolve {
+  width: 100%;
+  padding: 0.75rem;
   background-color: var(--primary);
   color: white;
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.4rem;
+  border-radius: 0.5rem;
   font-weight: 600;
   cursor: pointer;
 }
 
-.btn-admin-action:disabled {
+.btn-resolve:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.trust-score {
+  font-weight: 700;
+}
+
+.trust-score.high { color: var(--success); }
+.trust-score.low { color: var(--danger); }
+
+.status-flag {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.status-flag.red { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+.status-flag.yellow { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+
+.btn-table-action {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  margin-right: 0.5rem;
+  cursor: pointer;
+}
+
+.audit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+}
+
+.audit-card {
+  background-color: var(--bg-card);
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.audit-card .label {
+  display: block;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.audit-card .value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.btn-approve {
+  background-color: var(--success);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.4rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+.btn-reject {
+  background-color: var(--danger);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.4rem;
+  font-weight: 600;
+  cursor: pointer;
 }

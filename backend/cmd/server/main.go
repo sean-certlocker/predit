@@ -11,13 +11,13 @@ import (
 	"predi-backend/internal/market"
 	"predi-backend/internal/streaming"
 	"predi-backend/pkg/models"
-	"sync"
 )
 
 type Server struct {
 	ledgerService *ledger.Service
 	marketService *market.Service
 	lkService     *streaming.LiveKitService
+	users         map[string]*models.User
 }
 
 func main() {
@@ -28,9 +28,14 @@ func main() {
 		ledgerService: ledger.NewService(),
 		marketService: market.NewService(),
 		lkService:     streaming.NewLiveKitService(lkAPIKey, lkAPISecret),
+		users:         make(map[string]*models.User),
 	}
 
-	// Seed a test market
+	// Seed data
+	s.users["user1"] = &models.User{ID: "user1", Username: "alice", Role: "viewer", TrustScore: 85}
+	s.users["user2"] = &models.User{ID: "user2", Username: "bob", Role: "creator", TrustScore: 92}
+	s.users["user3"] = &models.User{ID: "user3", Username: "mallory", Role: "viewer", TrustScore: 10, Suspicious: true}
+
 	s.marketService.CreateMarket(&models.Market{
 		ID:                 "123",
 		Title:              "Will 20 or more cars cross the line in the next 60 seconds?",
@@ -38,20 +43,79 @@ func main() {
 		EventWindowSeconds: 60,
 		ResolutionMethod:   "traffic_count",
 		Rules:              `{"targetCount": 20}`,
+		Health:             "Green",
+	})
+
+	s.marketService.CreateMarket(&models.Market{
+		ID:                 "124",
+		Title:              "Will a red truck pass by in the next 30 seconds?",
+		Status:             models.StatusDraft,
+		EventWindowSeconds: 30,
+		ResolutionMethod:   "object_detection",
+		Rules:              `{"target": "red_truck"}`,
 	})
 
 	s.ledgerService.Deposit("user1", 1000)
 
 	// Routes
-	http.HandleFunc("/api/health", s.handleHealth)
-	http.HandleFunc("/api/ledger/balance", s.handleBalance)
-	http.HandleFunc("/api/markets", s.handleListMarkets)
-	http.HandleFunc("/api/streaming/token", s.handleGetStreamToken)
-	http.HandleFunc("/api/admin/trigger-resolution", s.handleTriggerResolution)
-	http.HandleFunc("/internal/ai/resolution", s.handleAIResolution)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/health", s.handleHealth)
+	mux.HandleFunc("/api/ledger/balance", s.handleBalance)
+	mux.HandleFunc("/api/ledger/audit", s.handleLedgerAudit)
+	mux.HandleFunc("/api/markets", s.handleListMarkets)
+	mux.HandleFunc("/api/users/risk", s.handleUserRisk)
+	mux.HandleFunc("/api/streaming/token", s.handleGetStreamToken)
+	mux.HandleFunc("/api/admin/trigger-resolution", s.handleTriggerResolution)
+	mux.HandleFunc("/api/admin/market/health", s.handleMarketHealthUpdate)
+	mux.HandleFunc("/api/admin/market/moderate", s.handleMarketModerate)
+	mux.HandleFunc("/internal/ai/resolution", s.handleAIResolution)
+
+	corsHandler := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 
 	fmt.Println("Predi Go Backend starting on :8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", corsHandler(mux)))
+}
+
+func (s *Server) handleMarketHealthUpdate(w http.ResponseWriter, r *http.Request) {
+	marketID := r.URL.Query().Get("market_id")
+	health := r.URL.Query().Get("health") // Green, Yellow, Red
+	
+	err := s.marketService.UpdateHealth(marketID, health, []string{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(map[string]string{"status": "updated", "health": health})
+}
+
+func (s *Server) handleMarketModerate(w http.ResponseWriter, r *http.Request) {
+	marketID := r.URL.Query().Get("market_id")
+	action := r.URL.Query().Get("action") // approve, reject
+	
+	status := models.StatusOpen
+	if action == "reject" {
+		status = models.StatusVoid
+	}
+	
+	err := s.marketService.TransitionStatus(marketID, status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(map[string]string{"status": string(status)})
 }
 
 func (s *Server) handleTriggerResolution(w http.ResponseWriter, r *http.Request) {
@@ -100,6 +164,25 @@ func (s *Server) handleBalance(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	balance := s.ledgerService.GetBalance(userID)
 	json.NewEncoder(w).Encode(map[string]float64{"balance": balance})
+}
+
+func (s *Server) handleLedgerAudit(w http.ResponseWriter, r *http.Request) {
+	audit := map[string]interface{}{
+		"total_system_balance": 1000.0,
+		"platform_fees":        25.50,
+		"pending_stakes":       450.0,
+	}
+	json.NewEncoder(w).Encode(audit)
+}
+
+func (s *Server) handleUserRisk(w http.ResponseWriter, r *http.Request) {
+	riskyUsers := make([]*models.User, 0)
+	for _, u := range s.users {
+		if u.Suspicious || u.TrustScore < 30 {
+			riskyUsers = append(riskyUsers, u)
+		}
+	}
+	json.NewEncoder(w).Encode(riskyUsers)
 }
 
 type AIResolutionRequest struct {

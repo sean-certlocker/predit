@@ -4,7 +4,6 @@ import (
 	"errors"
 	"predi-backend/pkg/models"
 	"sync"
-	"time"
 )
 
 type Service struct {
@@ -55,6 +54,26 @@ func (s *Service) TransitionStatus(id string, newStatus models.MarketStatus) err
 	}
 
 	m.Status = newStatus
+	return nil
+}
+
+func (s *Service) UpdateHealth(id string, health string, flags []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	m, ok := s.markets[id]
+	if !ok {
+		return errors.New("market not found")
+	}
+
+	m.Health = health
+	m.SafetyFlags = flags
+
+	// Anti-Manipulation Rule: If health is Red (severe disconnect), void the market
+	if health == "Red" && (m.Status == models.StatusEventActive || m.Status == models.StatusLocked) {
+		m.Status = models.StatusVoid
+	}
+
 	return nil
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Market } from '../types'
+import type { Market } from '../types'
 import { 
   LiveKitRoom, 
   VideoConference, 

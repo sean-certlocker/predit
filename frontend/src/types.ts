@@ -5,6 +5,16 @@ export interface Market {
   event_window_seconds: number;
   resolution_method: string;
   rules: string;
+  health?: string;
+  safety_flags?: string[];
+}
+
+export interface User {
+  id: string;
+  username: string;
+  role: string;
+  trust_score: number;
+  suspicious: boolean;
 }
 
 export interface MarketTemplate {

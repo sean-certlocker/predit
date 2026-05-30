@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Market } from './types'
+import type { Market } from './types'
 import MarketViewer from './components/MarketViewer'
-import { Activity, Wallet, Layout, Settings } from 'lucide-react'
+import AdminDashboard from './components/AdminDashboard'
+import MarketCreator from './components/MarketCreator'
+import { Activity, Wallet, Layout, Settings, Plus } from 'lucide-react'
 import './App.css'
 
 function App() {
@@ -11,6 +13,7 @@ function App() {
   const [balance, setBalance] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [showCreator, setShowCreator] = useState(false)
 
   const fetchMarkets = async () => {
     try {
@@ -32,16 +35,6 @@ function App() {
       setBalance(res.data.balance)
     } catch (err) {
       console.error('Failed to fetch balance', err)
-    }
-  }
-
-  const handleTriggerAI = async (marketId: string) => {
-    try {
-      await axios.post(`http://localhost:8080/api/admin/trigger-resolution?market_id=${marketId}`)
-      alert('Resolution triggered')
-      fetchMarkets()
-    } catch (err) {
-      alert('Failed to trigger resolution')
     }
   }
 
@@ -82,8 +75,18 @@ function App() {
               <div className="sidebar-header">
                 <Layout size={18} />
                 <h2>Markets</h2>
+                <button 
+                  className={`btn-icon ${showCreator ? 'active' : ''}`} 
+                  onClick={() => setShowCreator(!showCreator)}
+                >
+                  <Plus size={18} />
+                </button>
               </div>
               <div className="market-list">
+                {showCreator && <MarketCreator onCreated={() => {
+                  setShowCreator(false)
+                  fetchMarkets()
+                }} />}
                 {loading ? (
                   <p className="loading-text">Loading markets...</p>
                 ) : (
@@ -114,42 +117,7 @@ function App() {
             </section>
           </>
         ) : (
-          <div className="admin-panel">
-            <div className="admin-header">
-              <h2>Admin Dashboard</h2>
-              <p>Manage markets and trigger AI resolutions.</p>
-            </div>
-            <div className="admin-table-container">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {markets.map(m => (
-                    <tr key={m.id}>
-                      <td>{m.id}</td>
-                      <td>{m.title}</td>
-                      <td><span className={`status-pill ${m.status.toLowerCase()}`}>{m.status}</span></td>
-                      <td>
-                        <button 
-                          className="btn-admin-action"
-                          disabled={m.status !== 'OPEN'}
-                          onClick={() => handleTriggerAI(m.id)}
-                        >
-                          Trigger AI Resolution
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <AdminDashboard markets={markets} />
         )}
       </main>
     </div>
