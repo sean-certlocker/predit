@@ -33,11 +33,13 @@ func main() {
 	s.marketService.CreateMarket(&models.Market{
 		ID:                 "123",
 		Title:              "Will 20 or more cars cross the line in the next 60 seconds?",
-		Status:             models.StatusResolutionPending,
+		Status:             models.StatusOpen,
 		EventWindowSeconds: 60,
 		ResolutionMethod:   "traffic_count",
 		Rules:              `{"targetCount": 20}`,
 	})
+
+	s.ledgerService.Deposit("user1", 1000)
 
 	// Routes
 	http.HandleFunc("/api/health", s.handleHealth)
